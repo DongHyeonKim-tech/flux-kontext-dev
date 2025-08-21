@@ -83,7 +83,7 @@ def validate_token():
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         print(f"Request headers: {headers}")
         
-        response = requests.get("https://huggingface.co/api/whoami", headers=headers)
+        response = requests.get("https://huggingface.co/api/whoami-v2", headers=headers)
         print(f"Response status: {response.status_code}")
         print(f"Response text: {response.text[:200]}...")
         
