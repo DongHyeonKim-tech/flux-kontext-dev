@@ -128,32 +128,44 @@ def generate(req: GenerateReq):
                 # FLUX 모델 출력을 안전하게 처리
                 import numpy as np
                 
-                # PIL Image를 numpy 배열로 변환
+                # 원본 이미지 데이터 보존
                 if hasattr(out, 'numpy'):
-                    img_array = np.array(out)
+                    img_array = out.numpy()
                 else:
                     img_array = np.array(out)
                 
-                print(f"Image array shape: {img_array.shape}, dtype: {img_array.dtype}")
-                print(f"Image min: {img_array.min()}, max: {img_array.max()}")
+                print(f"Original image array - shape: {img_array.shape}, dtype: {img_array.dtype}")
+                print(f"Original image array - min: {img_array.min()}, max: {img_array.max()}")
                 
-                # NaN, 무한대 값 처리
-                if np.any(np.isnan(img_array)) or np.any(np.isinf(img_array)):
-                    print("NaN or infinite values detected, cleaning...")
-                    img_array = np.nan_to_num(img_array, nan=0.0, posinf=1.0, neginf=0.0)
-                
-                # 값 범위 정규화 및 클리핑
-                if img_array.dtype == np.float32 or img_array.dtype == np.float64:
-                    # float 타입인 경우 0-1 범위로 정규화
-                    if img_array.max() > 1.0 or img_array.min() < 0.0:
-                        print("Normalizing float values to 0-1 range")
-                        img_array = np.clip(img_array, 0.0, 1.0)
+                # 데이터 타입에 따른 처리
+                if img_array.dtype in [np.float32, np.float64]:
+                    print("Processing float image data...")
+                    
+                    # NaN, 무한대 값 처리
+                    if np.any(np.isnan(img_array)) or np.any(np.isinf(img_array)):
+                        print("NaN or infinite values detected, cleaning...")
+                        img_array = np.nan_to_num(img_array, nan=0.0, posinf=1.0, neginf=0.0)
+                    
+                    # 값 범위 확인 및 정규화
+                    if img_array.max() > 1.0:
+                        print("Values > 1.0 detected, normalizing to 0-1 range")
+                        img_array = img_array / img_array.max()
+                    elif img_array.min() < 0.0:
+                        print("Negative values detected, shifting to 0-1 range")
+                        img_array = img_array - img_array.min()
+                        if img_array.max() > 0:
+                            img_array = img_array / img_array.max()
                     
                     # 0-255 범위로 변환
                     img_array = (img_array * 255).astype(np.uint8)
+                    
+                elif img_array.dtype == np.uint8:
+                    print("Processing uint8 image data...")
+                    # 이미 올바른 범위
+                    pass
                 else:
-                    # 이미 uint8인 경우 클리핑만
-                    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+                    print(f"Unexpected dtype: {img_array.dtype}, converting to uint8")
+                    img_array = img_array.astype(np.uint8)
                 
                 print(f"Final image array - min: {img_array.min()}, max: {img_array.max()}, dtype: {img_array.dtype}")
                 
