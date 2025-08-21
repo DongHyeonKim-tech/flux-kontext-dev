@@ -61,6 +61,32 @@ DEFAULT_IMG = "https://huggingface.co/datasets/huggingface/documentation-images/
 def health():
     return {"status": "ok", "device": DEVICE, "dtype": str(DTYPE)}
 
+@app.get("/validate_token")
+def validate_token():
+    try:
+        if not HF_TOKEN:
+            return {"valid": False, "message": "HF_TOKEN이 설정되지 않았습니다"}
+        
+        # Hugging Face API로 토큰 유효성 검증
+        import requests
+        
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        response = requests.get("https://huggingface.co/api/whoami", headers=headers)
+        
+        if response.status_code == 200:
+            user_info = response.json()
+            return {
+                "valid": True, 
+                "message": "토큰이 유효합니다",
+                "user": user_info.get("name", "unknown"),
+                "email": user_info.get("email", "unknown")
+            }
+        else:
+            return {"valid": False, "message": f"토큰이 유효하지 않습니다. 상태 코드: {response.status_code}"}
+            
+    except Exception as e:
+        return {"valid": False, "message": f"토큰 검증 중 오류 발생: {str(e)}"}
+
 @app.post("/generate")
 def generate(req: GenerateReq):
     try:
