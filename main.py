@@ -71,11 +71,21 @@ def validate_token():
         if not HF_TOKEN:
             return {"valid": False, "message": "HF_TOKEN이 설정되지 않았습니다"}
         
+        # 토큰 정보 출력 (보안상 일부만)
+        token_preview = HF_TOKEN[:10] + "..." if len(HF_TOKEN) > 10 else HF_TOKEN
+        print(f"Token preview: {token_preview}")
+        print(f"Token length: {len(HF_TOKEN)}")
+        print(f"Token starts with 'hf_': {HF_TOKEN.startswith('hf_')}")
+        
         # Hugging Face API로 토큰 유효성 검증
         import requests
         
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        print(f"Request headers: {headers}")
+        
         response = requests.get("https://huggingface.co/api/whoami", headers=headers)
+        print(f"Response status: {response.status_code}")
+        print(f"Response text: {response.text[:200]}...")
         
         if response.status_code == 200:
             user_info = response.json()
@@ -86,7 +96,7 @@ def validate_token():
                 "email": user_info.get("email", "unknown")
             }
         else:
-            return {"valid": False, "message": f"토큰이 유효하지 않습니다. 상태 코드: {response.status_code}"}
+            return {"valid": False, "message": f"토큰이 유효하지 않습니다. 상태 코드: {response.status_code}", "response": response.text}
             
     except Exception as e:
         return {"valid": False, "message": f"토큰 검증 중 오류 발생: {str(e)}"}
