@@ -125,25 +125,41 @@ def generate(req: GenerateReq):
                 out = result.images[0]
                 print(f"Output image size: {out.size}, mode: {out.mode}")
                 
-                # NaN 값 처리 및 정규화
+                # FLUX 모델 출력을 안전하게 처리
+                import numpy as np
+                
+                # PIL Image를 numpy 배열로 변환
                 if hasattr(out, 'numpy'):
-                    import numpy as np
                     img_array = np.array(out)
-                    print(f"Image array shape: {img_array.shape}, dtype: {img_array.dtype}")
-                    print(f"Image min: {img_array.min()}, max: {img_array.max()}")
-                    
-                    # NaN 값 확인 및 처리
-                    if np.any(np.isnan(img_array)):
-                        print("NaN values detected, replacing with 0")
-                        img_array = np.nan_to_num(img_array, nan=0.0, posinf=1.0, neginf=0.0)
-                    
-                    # 값 범위 정규화 (0-1 범위로)
+                else:
+                    img_array = np.array(out)
+                
+                print(f"Image array shape: {img_array.shape}, dtype: {img_array.dtype}")
+                print(f"Image min: {img_array.min()}, max: {img_array.max()}")
+                
+                # NaN, 무한대 값 처리
+                if np.any(np.isnan(img_array)) or np.any(np.isinf(img_array)):
+                    print("NaN or infinite values detected, cleaning...")
+                    img_array = np.nan_to_num(img_array, nan=0.0, posinf=1.0, neginf=0.0)
+                
+                # 값 범위 정규화 및 클리핑
+                if img_array.dtype == np.float32 or img_array.dtype == np.float64:
+                    # float 타입인 경우 0-1 범위로 정규화
                     if img_array.max() > 1.0 or img_array.min() < 0.0:
-                        print("Normalizing image values to 0-1 range")
+                        print("Normalizing float values to 0-1 range")
                         img_array = np.clip(img_array, 0.0, 1.0)
                     
-                    out = Image.fromarray((img_array * 255).astype(np.uint8))
-                    print(f"Processed image size: {out.size}, mode: {out.mode}")
+                    # 0-255 범위로 변환
+                    img_array = (img_array * 255).astype(np.uint8)
+                else:
+                    # 이미 uint8인 경우 클리핑만
+                    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+                
+                print(f"Final image array - min: {img_array.min()}, max: {img_array.max()}, dtype: {img_array.dtype}")
+                
+                # numpy 배열을 PIL Image로 변환
+                out = Image.fromarray(img_array, mode='RGB')
+                print(f"Processed image size: {out.size}, mode: {out.mode}")
             else:
                 print("No images attribute found in result")
                 raise Exception("Pipeline did not return images")
