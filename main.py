@@ -61,6 +61,32 @@ DEFAULT_IMG = "https://huggingface.co/datasets/huggingface/documentation-images/
 def health():
     return {"status": "ok", "device": DEVICE, "dtype": str(DTYPE)}
 
+@app.get("/validate_token")
+def validate_token():
+    try:
+        if not HF_TOKEN:
+            return {"valid": False, "message": "HF_TOKEN이 설정되지 않았습니다"}
+        
+        # Hugging Face API로 토큰 유효성 검증
+        import requests
+        
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        response = requests.get("https://huggingface.co/api/whoami", headers=headers)
+        
+        if response.status_code == 200:
+            user_info = response.json()
+            return {
+                "valid": True, 
+                "message": "토큰이 유효합니다",
+                "user": user_info.get("name", "unknown"),
+                "email": user_info.get("email", "unknown")
+            }
+        else:
+            return {"valid": False, "message": f"토큰이 유효하지 않습니다. 상태 코드: {response.status_code}"}
+            
+    except Exception as e:
+        return {"valid": False, "message": f"토큰 검증 중 오류 발생: {str(e)}"}
+
 @app.post("/generate")
 def generate(req: GenerateReq):
     try:
@@ -84,6 +110,26 @@ def generate(req: GenerateReq):
                 print(f"Images length: {len(result.images)}")
                 out = result.images[0]
                 print(f"Output image size: {out.size}, mode: {out.mode}")
+                
+                # NaN 값 처리 및 정규화
+                if hasattr(out, 'numpy'):
+                    import numpy as np
+                    img_array = np.array(out)
+                    print(f"Image array shape: {img_array.shape}, dtype: {img_array.dtype}")
+                    print(f"Image min: {img_array.min()}, max: {img_array.max()}")
+                    
+                    # NaN 값 확인 및 처리
+                    if np.any(np.isnan(img_array)):
+                        print("NaN values detected, replacing with 0")
+                        img_array = np.nan_to_num(img_array, nan=0.0, posinf=1.0, neginf=0.0)
+                    
+                    # 값 범위 정규화 (0-1 범위로)
+                    if img_array.max() > 1.0 or img_array.min() < 0.0:
+                        print("Normalizing image values to 0-1 range")
+                        img_array = np.clip(img_array, 0.0, 1.0)
+                    
+                    out = Image.fromarray((img_array * 255).astype(np.uint8))
+                    print(f"Processed image size: {out.size}, mode: {out.mode}")
             else:
                 print("No images attribute found in result")
                 raise Exception("Pipeline did not return images")
