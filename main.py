@@ -65,19 +65,38 @@ def health():
 def generate(req: GenerateReq):
     try:
         src = req.image_url or DEFAULT_IMG
+        print(f"Loading image from: {src}")
         init_img = load_image(str(src)).convert("RGB")
+        print(f"Input image size: {init_img.size}, mode: {init_img.mode}")
 
         kwargs = dict(image=init_img, prompt=req.prompt, num_inference_steps=req.num_inference_steps)
         if req.guidance_scale is not None:
             kwargs["guidance_scale"] = req.guidance_scale
-
+        print('kwargs:', kwargs)
+        
         with torch.no_grad():
-            out = pipe(**kwargs).images[0]
-
+            print('Starting inference...')
+            result = pipe(**kwargs)
+            print(f"Pipeline result type: {type(result)}")
+            print(f"Pipeline result attributes: {dir(result)}")
+            
+            if hasattr(result, 'images'):
+                print(f"Images length: {len(result.images)}")
+                out = result.images[0]
+                print(f"Output image size: {out.size}, mode: {out.mode}")
+            else:
+                print("No images attribute found in result")
+                raise Exception("Pipeline did not return images")
+        
+        print('Saving image to buffer...')
         buf = io.BytesIO()
         out.save(buf, format="PNG")
         buf.seek(0)
+        print(f"Buffer size: {len(buf.getvalue())} bytes")
         return StreamingResponse(buf, media_type="image/png")
     except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
