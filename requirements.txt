@@ -8,3 +8,4 @@ protobuf>=3.20.3,<5.0.0
 sentencepiece
 requests
 python-dotenv
+flux
