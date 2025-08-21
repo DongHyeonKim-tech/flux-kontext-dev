@@ -63,12 +63,6 @@ def health():
 
 @app.post("/generate")
 def generate(req: GenerateReq):
-    """
-    {
-      "prompt": "Turn this cat into a dog",
-      "image_url": "https://.../cat.png"
-    }
-    """
     try:
         src = req.image_url or DEFAULT_IMG
         init_img = load_image(str(src)).convert("RGB")
