@@ -122,6 +122,9 @@ def generate(req: GenerateReq):
             
             if hasattr(result, 'images'):
                 print(f"Images length: {len(result.images)}")
+                print(f"Images type: {type(result.images)}")
+                print(f"Images attributes: {dir(result.images)}")
+                print(f"Images: {result.images}")
                 out = result.images[0]
                 print(f"Output image size: {out.size}, mode: {out.mode}")
                 
