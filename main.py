@@ -26,7 +26,8 @@ elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
 else:
     DEVICE = "cpu"
 
-DTYPE = torch.float16 if DEVICE in ("cuda", "mps") else torch.float32
+# DTYPE = torch.float16 if DEVICE in ("cuda", "mps") else torch.float32
+DTYPE = torch.float32
 pipe = DiffusionPipeline.from_pretrained(
 	MODEL_ID,
 	token=HF_TOKEN,
