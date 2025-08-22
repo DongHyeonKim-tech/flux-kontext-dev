@@ -12,11 +12,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, HttpUrl
 
 import torch
-import numpy as np
 from PIL import Image
 from diffusers import DiffusionPipeline
 from diffusers.utils import load_image
-from flux.content_filters import PixtralContentFilter
 
 MODEL_ID = "black-forest-labs/FLUX.1-Kontext-dev"
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
@@ -29,19 +27,6 @@ else:
     DEVICE = "cpu"
 
 DTYPE = torch.float16 if DEVICE in ("cuda", "mps") else torch.float32
-
-# Content filter 초기화
-integrity_checker = None
-if DEVICE == "cuda":
-    try:
-        integrity_checker = PixtralContentFilter(torch.device("cuda"))
-        print("Content filter initialized successfully")
-    except Exception as e:
-        print(f"Content filter initialization failed: {e}")
-        integrity_checker = None
-else:
-    print("Content filter not available on non-CUDA device")
-
 pipe = DiffusionPipeline.from_pretrained(
 	MODEL_ID,
 	token=HF_TOKEN,
@@ -124,21 +109,6 @@ def generate(req: GenerateReq):
         init_img = load_image(str(src)).convert("RGB")
         print(f"Input image size: {init_img.size}, mode: {init_img.mode}")
 
-        # FLUX 모델용 이미지 전처리
-        if integrity_checker and DEVICE == "cuda":
-            print("Applying FLUX image preprocessing...")
-            image_ = np.array(init_img) / 255.0  # 0-1 범위로 정규화
-            image_ = 2 * image_ - 1  # -1 to 1 범위로 변환
-            image_ = torch.from_numpy(image_).to("cuda", dtype=torch.float32).unsqueeze(0).permute(0, 3, 1, 2)
-            
-            # Content filter 검사
-            print("Running content filter check...")
-            if integrity_checker.test_image(image_):
-                raise ValueError("Your image has been flagged. Choose another prompt/image or try again.")
-            print("Content filter check passed")
-        else:
-            print("Content filter not available, skipping preprocessing")
-
         kwargs = dict(image=init_img, prompt=req.prompt, num_inference_steps=req.num_inference_steps)
         if req.guidance_scale is not None:
             kwargs["guidance_scale"] = req.guidance_scale
@@ -159,6 +129,7 @@ def generate(req: GenerateReq):
                 print(f"Output image size: {out.size}, mode: {out.mode}")
                 
                 # FLUX 모델 출력을 안전하게 처리
+                import numpy as np
                 
                 # 원본 이미지 데이터 보존
                 if hasattr(out, 'numpy'):
