@@ -117,6 +117,7 @@ def generate(req: GenerateReq):
         with torch.no_grad():
             print('Starting inference...')
             result = pipe(**kwargs)
+            print(f"Pipeline result: {result}")
             print(f"Pipeline result type: {type(result)}")
             print(f"Pipeline result attributes: {dir(result)}")
             
