@@ -19,12 +19,7 @@ from diffusers.utils import load_image
 MODEL_ID = "black-forest-labs/FLUX.1-Kontext-dev"
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
 
-if torch.cuda.is_available():
-    DEVICE = "cuda"
-elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-    DEVICE = "mps"
-else:
-    DEVICE = "cpu"
+DEVICE = "mps"
 
 # DTYPE = torch.float16 if DEVICE in ("cuda", "mps") else torch.float32
 DTYPE = torch.float32
